@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class ServerMessageController : SendMessage
+public class ServerMessageController : MessageController
 {
     [SerializeField] ClientSocket clientSocket;
 
@@ -30,7 +30,7 @@ public class ServerMessageController : SendMessage
 
     public void SendMessageToClients(string msg)
     {
-        SendMessageToClient(clientDestinationKey, clientSocket, NameContainer.sendMessage, msg);
+        SendMessage(clientDestinationKey, clientSocket, NameContainer.sendMessage, msg);
     }
 
     private void Update()

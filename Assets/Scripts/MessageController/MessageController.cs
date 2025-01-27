@@ -2,12 +2,12 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class SendMessage : MonoBehaviour
+public class MessageController : MonoBehaviour
 {
     public static Action<string> OnMessageReceive;
     string message;
 
-    public void SendMessageToClient(string destinationKey,ClientSocket clientSocket,string messageDestination, string message)
+    public void SendMessage(string destinationKey,ClientSocket clientSocket,string messageDestination, string message)
     {
         Client_Message client = new Client_Message();
 

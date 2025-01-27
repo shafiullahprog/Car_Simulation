@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class ClientMessageController : SendMessage
+public class ClientMessageController : MessageController
 {
     [SerializeField] ClientSocket clientSocket;
     string myIdentity = "Client", serverDestinationKey = "Server";
@@ -21,7 +21,7 @@ public class ClientMessageController : SendMessage
     public void SendMessageToServer(string msg)
     {
         Debug.Log("to client");
-        SendMessageToClient(serverDestinationKey, clientSocket, NameContainer.sendMessage, msg);
+        SendMessage(serverDestinationKey, clientSocket, NameContainer.sendMessage, msg);
     }
     private void Update()
     {

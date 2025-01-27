@@ -17,9 +17,6 @@ public class Step
 
 public class StepController : ProcessController
 {
-    ServerMessageController serverMessageController;
-    ClientMessageController clientMessageController;
-
     [Header("Steps")]
     [SerializeField] List<Step> dismantleSteps = new List<Step>();
     [SerializeField] List<Step> assemleSteps = new List<Step>();
@@ -27,48 +24,16 @@ public class StepController : ProcessController
     public UnityAction<int, bool> HighlightNextObjectEvent;
     public UnityAction<int, bool> DisablePreviousHighlightEvent;
 
+    [HideInInspector] public UnityEvent OnGamestart = new UnityEvent();
+    [HideInInspector] public UnityEvent<string> OnProcessChange = new UnityEvent<string>();
+    [HideInInspector] public UnityEvent OnFinalStepReached;
+    [HideInInspector] public UnityEvent OnClickingWrongStep;
 
-    public UnityEvent OnAssemblyStep, OnDismantleStep;
     private void Start()
     {
-        ClientMessageController.OnMessageReceive += ActionOnReceivedMessage;
-        ServerMessageController.OnMessageReceive += ActionOnReceivedMessage;     
-        ClientSocket.OnSocketAssigned += FindMessageController;
         HighlightNextObjectEvent += HighlightObjController;
         DisablePreviousHighlightEvent += HighlightObjController;
         SelectStepList(dismantleSteps);
-    } 
-
-    void FindMessageController(string socketType)
-    {
-        if(socketType == "server")
-            serverMessageController = FindObjectOfType<ServerMessageController>();
-        if(socketType == "client")
-            clientMessageController = FindObjectOfType<ClientMessageController>();
-    }
-
-    void ActionOnReceivedMessage(string msg)
-    {
-        if(msg == "Dismantle")
-        {
-            SetDismantleProcess();
-        }
-        else if(msg == "Assemble")
-        {
-            SetAssembleProcess();
-        }
-    }
-
-    public void SendProgressUpdate()
-    {
-        if (serverMessageController != null)
-        {
-            serverMessageController.SendMessageToClients(currentProcess.ToString());
-        }
-        else if (clientMessageController != null)
-        {
-            clientMessageController.SendMessageToServer(currentProcess.ToString());
-        }
     }
     public void HighlightObjController(int stepIndex, bool val)
     {
@@ -78,7 +43,6 @@ public class StepController : ProcessController
             outline.GetComponent<Outline>().enabled = val;
         }
     }
-
     private void Update()
     {
         if (Input.GetMouseButtonDown(0))
@@ -97,21 +61,28 @@ public class StepController : ProcessController
     }
     private void MonitorSteps(Transform hitPart)
     {
-
         if (currentSteps.Count > 0)
         {    
             if (currentStepIndex < currentSteps.Count && hitPart == currentSteps[currentStepIndex].objectToAnimate)
             {
-                DisablePreviousHighlightEvent?.Invoke(currentStepIndex - 1, false);
-                HighlightNextObjectEvent?.Invoke(currentStepIndex, true);
                 Step step = currentSteps[currentStepIndex];
+                
                 AnimationSteps(step.objAnimator, step.AnimTrigger);
                 HandleCurrentStepsObjectActivation(currentSteps);
+                
+                DisablePreviousHighlightEvent?.Invoke(currentStepIndex - 1, false);
+                HighlightNextObjectEvent?.Invoke(currentStepIndex, true);
+                
                 currentStepIndex++;
+
+                if(currentStepIndex == currentSteps.Count)
+                {
+                    OnFinalStepReached?.Invoke();
+                }
             }
             else
             {
-                Debug.Log("Wrong step");
+                OnClickingWrongStep?.Invoke();
             }
         }
         else
@@ -123,7 +94,7 @@ public class StepController : ProcessController
     {
         objToAnimate.SetTrigger(triggerName);
     } 
-    protected override void SetAssembleProcess()
+    public override void SetAssembleProcess()
     {
         currentStepIndex = 0;
         UpdateAnimationForCurrentProcess();
@@ -131,9 +102,9 @@ public class StepController : ProcessController
         SelectStepList(assemleSteps);
         SkipStep();
 
-        OnAssemblyStep?.Invoke();
+        //OnProcessChange?.Invoke(currentProcess.ToString());
     }
-    protected override void SetDismantleProcess()
+    public override void SetDismantleProcess()
     {
         currentStepIndex = 0;
         UpdateAnimationForCurrentProcess();
@@ -141,7 +112,7 @@ public class StepController : ProcessController
         SelectStepList(dismantleSteps);
         SkipStep();
 
-        OnDismantleStep?.Invoke();
+        //OnProcessChange?.Invoke(currentProcess.ToString());
     }
     protected override void SelectStepList(List<Step> process)
     {
@@ -152,7 +123,6 @@ public class StepController : ProcessController
     {
         foreach (var step in currentSteps)
         {
-            
             if (step.objAnimator != null)
             {
                 Debug.Log("Step name: " + step.objectToAnimate.name);
@@ -173,20 +143,11 @@ public class StepController : ProcessController
                         obj.gameObject.SetActive(false);
                 }
             }
-
             foreach (Transform obj in currentSteps[currentStepIndex].objectToEnable)
             {
                 if (obj != null)
                     obj.gameObject.SetActive(true);
             }
-
-            /*foreach(Outline outline in currentSteps[currentStepIndex].outlines)
-           {
-               if (outline != null)
-               {
-                   outline.GetComponent<Outline>().enabled = tru;
-               }
-           }*/
         }
         else if (currentProcess == CurrentProcess.Assemble)
         {
@@ -249,6 +210,7 @@ public class StepController : ProcessController
         {*/
         if (currentStepIndex == 0)
         {
+            //SendProcessUpdateToClient();
             HighlightNextObjectEvent?.Invoke(currentStepIndex, true);
             currentStepIndex = 1;
             HandleCurrentStepsObjectActivation(currentSteps);
@@ -258,5 +220,9 @@ public class StepController : ProcessController
             Debug.Log("Not at the first step.");
         }
         //}
+    }
+    public void SendProcessUpdateToClient(string msg)
+    {
+        OnProcessChange?.Invoke(msg);
     }
 }

@@ -11,12 +11,12 @@ public class ProcessController : MonoBehaviour
     public List<Step> currentSteps;
     public int currentStepIndex = 0;
 
-    protected virtual void SetAssembleProcess()
+    public virtual void SetAssembleProcess()
     {
         SetProcess(CurrentProcess.Assemble);
     }
 
-    protected virtual void SetDismantleProcess()
+    public virtual void SetDismantleProcess()
     {
         SetProcess(CurrentProcess.Dismantle);
     }

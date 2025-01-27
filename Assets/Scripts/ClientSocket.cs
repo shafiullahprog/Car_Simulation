@@ -17,11 +17,9 @@ class StreamingData
 
 public class ClientSocket : MonoBehaviour
 {
-
     //Node js file name
     [Header("JS file path")]
     public string indexPath;
-
 
     public static string staticIP = "http://127.0.0.1:3000";
     string firstServerID = "";
@@ -84,7 +82,6 @@ public class ClientSocket : MonoBehaviour
         streamingData = JsonUtility.FromJson<StreamingData>(GetBaseURL());
     }
     #endregion
-
 
     //Update client status when a client connects
     #region ClientStatus
