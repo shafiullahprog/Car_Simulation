@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 [System.Serializable]
 public class Step
@@ -11,6 +12,9 @@ public class Step
 
     public List<Transform> objectToEnable;
     public List<Transform> objectToDisable;
+
+    public List<Outline> objectToHighlight;
+
 }
 
 public class StepController : ProcessController
@@ -18,11 +22,27 @@ public class StepController : ProcessController
     [Header("Steps")]
     [SerializeField] List<Step> dismantleSteps = new List<Step>();
     [SerializeField] List<Step> assemleSteps = new List<Step>();
-    
+     
+    public UnityAction<int, bool> HighlightNextObjectEvent;
+    public UnityAction<int, bool> DisablePreviousHighlightEvent;
+
+
     private void Start()
     {
+        HighlightNextObjectEvent += HighlightObjController;
+        DisablePreviousHighlightEvent += HighlightObjController;
         SelectStepList(dismantleSteps);
     } 
+
+    public void HighlightObjController(int stepIndex, bool val)
+    {
+        List<Outline> currentOutLineObj = currentSteps[stepIndex].objectToHighlight;
+        foreach(Outline outline in currentOutLineObj)
+        {
+            outline.GetComponent<Outline>().enabled = val;
+        }
+    }
+
     private void Update()
     {
         if (Input.GetMouseButtonDown(0))
@@ -61,6 +81,7 @@ public class StepController : ProcessController
         {*/
             if (currentStepIndex == 0)
             {
+                HighlightNextObjectEvent?.Invoke(currentStepIndex, true);
                 currentStepIndex = 1;
                 HandleCurrentStepsObjectActivation(currentSteps);
             }
@@ -76,6 +97,9 @@ public class StepController : ProcessController
         {    
             if (currentStepIndex < currentSteps.Count && hitPart == currentSteps[currentStepIndex].objectToAnimate)
             {
+
+                DisablePreviousHighlightEvent?.Invoke(currentStepIndex - 1, false);
+                HighlightNextObjectEvent?.Invoke(currentStepIndex, true);
                 Step step = currentSteps[currentStepIndex];
                 AnimationSteps(step.objAnimator, step.AnimTrigger);
                 HandleCurrentStepsObjectActivation(currentSteps);
@@ -114,14 +138,16 @@ public class StepController : ProcessController
     protected override void SelectStepList(List<Step> process)
     {
         base.SelectStepList(process);
-        SetInitialStateOfStepObjects(process);
+        SetInitialStateOfObjects(process);
     }
     private void UpdateAnimationForCurrentProcess()
     {
         foreach (var step in currentSteps)
         {
+            
             if (step.objAnimator != null)
             {
+                Debug.Log("Step name: " + step.objectToAnimate.name);
                 string triggerName = step.AnimTrigger;
                 step.objAnimator.ResetTrigger(triggerName);
             }
@@ -145,6 +171,14 @@ public class StepController : ProcessController
                 if (obj != null)
                     obj.gameObject.SetActive(true);
             }
+
+            /*foreach(Outline outline in currentSteps[currentStepIndex].outlines)
+           {
+               if (outline != null)
+               {
+                   outline.GetComponent<Outline>().enabled = tru;
+               }
+           }*/
         }
         else if (currentProcess == CurrentProcess.Assemble)
         {
@@ -166,7 +200,7 @@ public class StepController : ProcessController
             }
         }
     }
-    private void SetInitialStateOfStepObjects(List<Step> currentStep)
+    private void SetInitialStateOfObjects(List<Step> currentStep)
     {
         foreach (Step step in currentStep)
         {
