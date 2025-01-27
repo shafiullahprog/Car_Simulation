@@ -12,13 +12,14 @@ public class Step
 
     public List<Transform> objectToEnable;
     public List<Transform> objectToDisable;
-
     public List<Outline> objectToHighlight;
-
 }
 
 public class StepController : ProcessController
 {
+    ServerMessageController serverMessageController;
+    ClientMessageController clientMessageController;
+
     [Header("Steps")]
     [SerializeField] List<Step> dismantleSteps = new List<Step>();
     [SerializeField] List<Step> assemleSteps = new List<Step>();
@@ -27,13 +28,48 @@ public class StepController : ProcessController
     public UnityAction<int, bool> DisablePreviousHighlightEvent;
 
 
+    public UnityEvent OnAssemblyStep, OnDismantleStep;
     private void Start()
     {
+        ClientMessageController.OnMessageReceive += ActionOnReceivedMessage;
+        ServerMessageController.OnMessageReceive += ActionOnReceivedMessage;     
+        ClientSocket.OnSocketAssigned += FindMessageController;
         HighlightNextObjectEvent += HighlightObjController;
         DisablePreviousHighlightEvent += HighlightObjController;
         SelectStepList(dismantleSteps);
     } 
 
+    void FindMessageController(string socketType)
+    {
+        if(socketType == "server")
+            serverMessageController = FindObjectOfType<ServerMessageController>();
+        if(socketType == "client")
+            clientMessageController = FindObjectOfType<ClientMessageController>();
+    }
+
+    void ActionOnReceivedMessage(string msg)
+    {
+        if(msg == "Dismantle")
+        {
+            SetDismantleProcess();
+        }
+        else if(msg == "Assemble")
+        {
+            SetAssembleProcess();
+        }
+    }
+
+    public void SendProgressUpdate()
+    {
+        if (serverMessageController != null)
+        {
+            serverMessageController.SendMessageToClients(currentProcess.ToString());
+        }
+        else if (clientMessageController != null)
+        {
+            clientMessageController.SendMessageToServer(currentProcess.ToString());
+        }
+    }
     public void HighlightObjController(int stepIndex, bool val)
     {
         List<Outline> currentOutLineObj = currentSteps[stepIndex].objectToHighlight;
@@ -59,45 +95,13 @@ public class StepController : ProcessController
             MonitorSteps(hit.transform);
         }
     }
-    
-    //UI Button call
-    public void SkipStep()
-    {
-        /*if (toLastStep)
-        {
-            Debug.Log("Step count "+ (currentSteps.Count -1));
-            if (currentStepIndex < currentSteps.Count - 1 && currentStepIndex == currentSteps.Count-1)
-            {
-                Debug.LogError("Second last");
-                currentStepIndex = currentSteps.Count - 1;
-                HandleCurrentStepsObjectActivation(currentSteps);
-            }
-            else
-            {
-                Debug.Log("Process Complete");
-            }
-        }
-        else
-        {*/
-            if (currentStepIndex == 0)
-            {
-                HighlightNextObjectEvent?.Invoke(currentStepIndex, true);
-                currentStepIndex = 1;
-                HandleCurrentStepsObjectActivation(currentSteps);
-            }
-            else
-            {
-                Debug.Log("Not at the first step.");
-            }
-        //}
-    }
     private void MonitorSteps(Transform hitPart)
     {
+
         if (currentSteps.Count > 0)
         {    
             if (currentStepIndex < currentSteps.Count && hitPart == currentSteps[currentStepIndex].objectToAnimate)
             {
-
                 DisablePreviousHighlightEvent?.Invoke(currentStepIndex - 1, false);
                 HighlightNextObjectEvent?.Invoke(currentStepIndex, true);
                 Step step = currentSteps[currentStepIndex];
@@ -126,6 +130,8 @@ public class StepController : ProcessController
         base.SetAssembleProcess();
         SelectStepList(assemleSteps);
         SkipStep();
+
+        OnAssemblyStep?.Invoke();
     }
     protected override void SetDismantleProcess()
     {
@@ -134,6 +140,8 @@ public class StepController : ProcessController
         base.SetDismantleProcess();
         SelectStepList(dismantleSteps);
         SkipStep();
+
+        OnDismantleStep?.Invoke();
     }
     protected override void SelectStepList(List<Step> process)
     {
@@ -218,5 +226,37 @@ public class StepController : ProcessController
         {
             obj.gameObject.SetActive(value);
         }
+    }
+
+    //UI Button call
+    public void SkipStep()
+    {
+        /*if (toLastStep)
+        {
+            Debug.Log("Step count "+ (currentSteps.Count -1));
+            if (currentStepIndex < currentSteps.Count - 1 && currentStepIndex == currentSteps.Count-1)
+            {
+                Debug.LogError("Second last");
+                currentStepIndex = currentSteps.Count - 1;
+                HandleCurrentStepsObjectActivation(currentSteps);
+            }
+            else
+            {
+                Debug.Log("Process Complete");
+            }
+        }
+        else
+        {*/
+        if (currentStepIndex == 0)
+        {
+            HighlightNextObjectEvent?.Invoke(currentStepIndex, true);
+            currentStepIndex = 1;
+            HandleCurrentStepsObjectActivation(currentSteps);
+        }
+        else
+        {
+            Debug.Log("Not at the first step.");
+        }
+        //}
     }
 }
