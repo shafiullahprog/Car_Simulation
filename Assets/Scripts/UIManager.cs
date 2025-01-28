@@ -31,12 +31,12 @@ public class UIManager : Check_ClientServerMode
     {
         if (clientMessageController != null)
         {
-            Debug.Log("Send msg to server");
+            //Debug.Log("Send msg to server");
             clientMessageController.SendMessageToServer(message);
         }
         if (serverMessageController != null)
         {
-            Debug.Log("Send msg to client");
+            //Debug.Log("Send msg to client");
             serverMessageController.SendMessageToClients(message);
         }
     }

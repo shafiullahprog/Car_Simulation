@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 
 [System.Serializable]
 public class Step
@@ -67,6 +68,14 @@ public class StepController : ProcessController
         {
             MonitorSteps(hit.transform);
         }
+        else
+        {
+            if (!EventSystem.current.IsPointerOverGameObject())
+            {
+                OnClickingWrongStep?.Invoke();
+                SendStepMessage("wrongStep", currentStepIndex);
+            }
+        }
     }
     private void MonitorSteps(Transform hitPart)
     {
@@ -74,8 +83,8 @@ public class StepController : ProcessController
         {    
             if (currentStepIndex < currentSteps.Count && hitPart == currentSteps[currentStepIndex].objectToAnimate)
             {
-                SendStepMessage("currentStep", currentStepIndex);
                 PerformStep();
+                SendStepMessage("currentStep", currentStepIndex);
             }
             else
             {
@@ -138,7 +147,7 @@ public class StepController : ProcessController
         {
             if (step.objAnimator != null)
             {
-                Debug.Log("Step name: " + step.objectToAnimate.name);
+                //Debug.Log("Step name: " + step.objectToAnimate.name);
                 string triggerName = step.AnimTrigger;
                 step.objAnimator.ResetTrigger(triggerName);
             }
@@ -164,9 +173,9 @@ public class StepController : ProcessController
         }
         else if (currentProcess == CurrentProcess.Assemble)
         {
-            if (currentStepIndex > 0)
+            if (currentStepIndex >= 0)
             {
-                foreach (Transform obj in currentSteps[currentStepIndex - 1].objectToEnable)
+                foreach (Transform obj in currentSteps[currentStepIndex].objectToEnable)
                 {
                     if (obj != null)
                         obj.gameObject.SetActive(true);
@@ -198,7 +207,8 @@ public class StepController : ProcessController
     {
         foreach (Transform obj in objects)
         {
-            obj.gameObject.SetActive(value);
+            if(obj !=null)
+                obj.gameObject.SetActive(value);
         }
     }
 
@@ -209,8 +219,16 @@ public class StepController : ProcessController
         {
             //SendProcessUpdateToClient();
             HighlightNextObjectEvent?.Invoke(currentStepIndex, true);
-            currentStepIndex = 1;
-            HandleCurrentStepsObjectActivation(currentSteps);
+            if (currentProcess == CurrentProcess.Dismantle)
+            {
+                currentStepIndex = 1;
+                HandleCurrentStepsObjectActivation(currentSteps);
+            }
+            else
+            {
+                HandleCurrentStepsObjectActivation(currentSteps);
+                currentStepIndex = 1;
+            }
         }
         else
         {
