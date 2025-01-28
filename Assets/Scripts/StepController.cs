@@ -17,6 +17,10 @@ public class Step
 
 public class StepController : ProcessController
 {
+
+    ClientMessageController controller;
+    ServerMessageController serverController;
+
     [Header("Steps")]
     [SerializeField] List<Step> dismantleSteps = new List<Step>();
     [SerializeField] List<Step> assemleSteps = new List<Step>();
@@ -25,16 +29,21 @@ public class StepController : ProcessController
     public UnityAction<int, bool> DisablePreviousHighlightEvent;
 
     [HideInInspector] public UnityEvent OnGamestart = new UnityEvent();
+    [HideInInspector] public UnityEvent OnFinalStepReached = new UnityEvent();
+
     [HideInInspector] public UnityEvent<string> OnProcessChange = new UnityEvent<string>();
-    [HideInInspector] public UnityEvent OnFinalStepReached;
-    [HideInInspector] public UnityEvent OnClickingWrongStep;
+
+    [HideInInspector] public static UnityEvent OnClickingWrongStep = new UnityEvent();
+
 
     private void Start()
     {
         HighlightNextObjectEvent += HighlightObjController;
         DisablePreviousHighlightEvent += HighlightObjController;
+        MessageController.OnMessageReceive += ProcessStepMessage;
         SelectStepList(dismantleSteps);
     }
+
     public void HighlightObjController(int stepIndex, bool val)
     {
         List<Outline> currentOutLineObj = currentSteps[stepIndex].objectToHighlight;
@@ -65,24 +74,13 @@ public class StepController : ProcessController
         {    
             if (currentStepIndex < currentSteps.Count && hitPart == currentSteps[currentStepIndex].objectToAnimate)
             {
-                Step step = currentSteps[currentStepIndex];
-                
-                AnimationSteps(step.objAnimator, step.AnimTrigger);
-                HandleCurrentStepsObjectActivation(currentSteps);
-                
-                DisablePreviousHighlightEvent?.Invoke(currentStepIndex - 1, false);
-                HighlightNextObjectEvent?.Invoke(currentStepIndex, true);
-                
-                currentStepIndex++;
-
-                if(currentStepIndex == currentSteps.Count)
-                {
-                    OnFinalStepReached?.Invoke();
-                }
+                SendStepMessage("currentStep", currentStepIndex);
+                PerformStep();
             }
             else
             {
                 OnClickingWrongStep?.Invoke();
+                SendStepMessage("wrongStep", currentStepIndex);
             }
         }
         else
@@ -90,6 +88,25 @@ public class StepController : ProcessController
             Debug.Log("No Steps found");
         }
     }
+
+    private void PerformStep()
+    {
+        Step step = currentSteps[currentStepIndex];
+
+        AnimationSteps(step.objAnimator, step.AnimTrigger);
+        HandleCurrentStepsObjectActivation(currentSteps);
+
+        DisablePreviousHighlightEvent?.Invoke(currentStepIndex - 1, false);
+        HighlightNextObjectEvent?.Invoke(currentStepIndex, true);
+
+        currentStepIndex++;
+
+        if (currentStepIndex == currentSteps.Count)
+        {
+            OnFinalStepReached?.Invoke();
+        }
+    }
+
     private void AnimationSteps(Animator objToAnimate, string triggerName)
     {
         objToAnimate.SetTrigger(triggerName);
@@ -101,8 +118,6 @@ public class StepController : ProcessController
         base.SetAssembleProcess();
         SelectStepList(assemleSteps);
         SkipStep();
-
-        //OnProcessChange?.Invoke(currentProcess.ToString());
     }
     public override void SetDismantleProcess()
     {
@@ -111,8 +126,6 @@ public class StepController : ProcessController
         base.SetDismantleProcess();
         SelectStepList(dismantleSteps);
         SkipStep();
-
-        //OnProcessChange?.Invoke(currentProcess.ToString());
     }
     protected override void SelectStepList(List<Step> process)
     {
@@ -192,22 +205,6 @@ public class StepController : ProcessController
     //UI Button call
     public void SkipStep()
     {
-        /*if (toLastStep)
-        {
-            Debug.Log("Step count "+ (currentSteps.Count -1));
-            if (currentStepIndex < currentSteps.Count - 1 && currentStepIndex == currentSteps.Count-1)
-            {
-                Debug.LogError("Second last");
-                currentStepIndex = currentSteps.Count - 1;
-                HandleCurrentStepsObjectActivation(currentSteps);
-            }
-            else
-            {
-                Debug.Log("Process Complete");
-            }
-        }
-        else
-        {*/
         if (currentStepIndex == 0)
         {
             //SendProcessUpdateToClient();
@@ -219,10 +216,52 @@ public class StepController : ProcessController
         {
             Debug.Log("Not at the first step.");
         }
-        //}
     }
-    public void SendProcessUpdateToClient(string msg)
+
+    public void SendProcessUpdate(string msg)
     {
         OnProcessChange?.Invoke(msg);
+    }
+
+    private void SendStepMessage(string actionType, int stepIndex)
+    {
+        string message = $"{actionType}:{stepIndex}";
+        controller = FindObjectOfType<ClientMessageController>();
+        if (controller != null)
+        {
+            controller.SendMessageToServer(message);
+        }
+
+        serverController = FindObjectOfType<ServerMessageController>();
+        if (serverController != null)
+        {
+            serverController.SendMessageToClients(message);
+        }
+    }
+
+    private void ProcessStepMessage(string message)
+    {
+        string[] parts = message.Split(':');
+        if (parts.Length != 2) return;
+
+        string actionType = parts[0];
+        int stepIndex = int.Parse(parts[1]);
+
+        switch (actionType)
+        {
+            case "currentStep":
+                PerformStep();
+                break;
+            case "wrongStep":
+                OnClickingWrongStep?.Invoke();
+                break;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        HighlightNextObjectEvent -= HighlightObjController;
+        DisablePreviousHighlightEvent -= HighlightObjController;
+        MessageController.OnMessageReceive -= ProcessStepMessage;
     }
 }

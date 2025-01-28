@@ -1,18 +1,18 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class Check_ClientServerMode : MonoBehaviour
 {
-    public ServerMessageController serverMessageController;
-    public ClientMessageController clientMessageController;
-   
-    public void FindMessageController(/*string socketType*/)
+    protected ServerMessageController serverMessageController;
+    protected ClientMessageController clientMessageController;
+    public void FindMessageController(string socketType)
     {
-        /*if (socketType == "server")*/
+        if (socketType == ActionStateSync.serverSocketType)
+        {
             serverMessageController = FindObjectOfType<ServerMessageController>();
-        /*if (socketType == "client")*/
+        }
+        else
+        {
             clientMessageController = FindObjectOfType<ClientMessageController>();
+        }
     }
-
 }

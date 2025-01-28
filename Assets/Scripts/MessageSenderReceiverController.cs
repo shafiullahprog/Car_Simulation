@@ -8,10 +8,10 @@ public class MessageSenderReceiverController : Check_ClientServerMode
     [SerializeField] UIManager uiManager;
     private void Start()
     {
-        Invoke("FindMessageController", 1f);
-        ClientMessageController.OnMessageReceive += ActionOnReceivedMessage;
-        ServerMessageController.OnMessageReceive += ActionOnReceivedMessage;
+        ClientSocket.OnSocketAssigned += FindMessageController;
+        MessageController.OnMessageReceive += ActionOnReceivedMessage;
         stepController.OnProcessChange.AddListener(SendProgressUpdate);
+       // FindMessageController();
     }
     
     void ActionOnReceivedMessage(string msg)
@@ -29,6 +29,10 @@ public class MessageSenderReceiverController : Check_ClientServerMode
             Debug.Log("StartMenu");
             uiManager.StartMenu();
         }
+        if(msg == ActionStateSync.Restart)
+        {
+            uiManager.ResetSteps();
+        }
     }
 
     public void SendProgressUpdate(string currentProcess)
@@ -42,4 +46,10 @@ public class MessageSenderReceiverController : Check_ClientServerMode
             clientMessageController.SendMessageToServer(currentProcess);
         }
     }
+
+    private void OnDestroy()
+    { 
+        MessageController.OnMessageReceive -= ActionOnReceivedMessage;
+    }
+
 }

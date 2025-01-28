@@ -1,10 +1,10 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class UIManager : Check_ClientServerMode
 {
     [SerializeField] StepController controller;
-    [SerializeField] ClientSocket clientSocket;
     [SerializeField] GameObject StartProcess, EndProcess;
     [SerializeField] GameObject TopLeftMenu;
 
@@ -12,12 +12,12 @@ public class UIManager : Check_ClientServerMode
 
     private void Start()
     {
-        Invoke("FindMessageController",1f);
-        controller.OnFinalStepReached.AddListener( () =>
+        controller.OnFinalStepReached.AddListener(() =>
         {
             ProcessComplete(true);
         });
         startProcess.onClick.AddListener(StartMenu);
+        ClientSocket.OnSocketAssigned += FindMessageController;
     }
 
     public void StartMenu()
@@ -25,25 +25,29 @@ public class UIManager : Check_ClientServerMode
         StartProcess.SetActive(false);
         TopLeftMenu.SetActive(true);
         controller.SkipStep();
-        //SendStatus();
     }
 
-    public void SendStartGameStatus()
+    public void SendStartGameStatus(string message)
     {
         if (clientMessageController != null)
         {
             Debug.Log("Send msg to server");
-            clientMessageController.SendMessageToServer(ActionStateSync.StartMenu);
+            clientMessageController.SendMessageToServer(message);
         }
         if (serverMessageController != null)
         {
             Debug.Log("Send msg to client");
-            serverMessageController.SendMessageToClients(ActionStateSync.StartMenu);
+            serverMessageController.SendMessageToClients(message);
         }
     }
 
     public void ProcessComplete(bool value)
     {
         EndProcess.SetActive(value);
+    }
+
+    public void ResetSteps()
+    {
+        SceneManager.LoadScene(0);
     }
 }
